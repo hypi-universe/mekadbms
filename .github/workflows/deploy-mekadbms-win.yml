@@ -85,9 +85,10 @@ jobs:
         working-directory: mekadb
         #nasm isn't added to path so need to do it manually https://github.com/chocolatey/choco/issues/2794
         #https://aws.github.io/aws-lc-rs/requirements/windows.html
+#          set PATH="C:\Program Files\NASM;%PATH%"
+#          set AWS_LC_SYS_NO_ASM="true"
         run: |
-          set PATH="C:\Program Files\NASM;%PATH%"
-          set AWS_LC_SYS_NO_ASM="true"
+          setx /M Path "%path%;C:\Program Files\NASM"
           rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
           rustup show
           cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
