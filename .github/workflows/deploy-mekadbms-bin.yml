@@ -57,12 +57,12 @@ jobs:
             docker_target: linux/amd64
             bin: mekadbms-darwin-amd64
             command: both
-#          - os_name: macOS-aarch64
-#            os: macOS-latest
-#            target: aarch64-apple-darwin
-#            docker_target: linux/arm64
-#            bin: mekadbms-darwin-arm64
-#            command: both
+          - os_name: macOS-aarch64
+            os: macOS-latest
+            target: aarch64-apple-darwin
+            docker_target: linux/arm64
+            bin: mekadbms-darwin-arm64
+            command: both
         toolchain:
           - stable
     steps:
@@ -121,8 +121,8 @@ jobs:
         #Use rustup target list to get full list of rust targets
         #docker:26.1.3-dind is available for amd64,arm64,arm/v6,arm/v7
         #See for linker export https://github.com/rust-lang/rust/issues/28924#issuecomment-580828030
-      - name: build X86
-        if: contains(matrix.platform.os_name, 'Linux-x86_64')
+      - name: build linux X86
+        if: matrix.platform.os_name == 'Linux-x86_64'
         working-directory: mekadb
         #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
         #rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
@@ -131,8 +131,8 @@ jobs:
           export RUSTFLAGS="-C target-feature=+crt-static" && \
           cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
 
-      - name: build ARM
-        if: contains(matrix.platform.os_name, 'Linux-aarch64')
+      - name: build linux ARM
+        if: matrix.platform.os_name == 'Linux-aarch64'
         working-directory: mekadb
         #necessary or we get "jammy-updates/restricted amd64 Packages " errors from update
         #sudo rm -f /etc/apt/sources.list.d/archive_uri-*
@@ -171,6 +171,26 @@ jobs:
           rm -rf ~/.cargo/registry && \
           rm -rf ~/.cargo/git && \
           cargo build --verbose --release --package mekadbms --target ${{ matrix.platform.target }}
+
+      - name: build Mac X86
+        if: matrix.platform.os_name == 'macOS-x86_64'
+        working-directory: mekadb
+        #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
+        run: |
+          rustup show
+          rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
+          export RUSTFLAGS="-C target-feature=+crt-static"
+          cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
+
+      - name: build Mac X86
+        if: matrix.platform.os_name == 'macOS-x86_64'
+        working-directory: mekadb
+        #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
+        run: |
+          rustup show
+          rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
+          export RUSTFLAGS="-C target-feature=+crt-static" && \
+          cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
 
         #https://github.com/aws/aws-lc/issues/1477
         #https://github.com/rustls/rustls/issues/1913
