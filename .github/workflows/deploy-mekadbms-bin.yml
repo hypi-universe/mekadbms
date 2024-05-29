@@ -92,7 +92,7 @@ jobs:
           tags: type=raw,value={{branch}}-{{sha}}
 
       - name: Set up QEMU
-        if: !contains(matrix.platform.docker_target, 'linux/amd64')
+        if: ! contains(matrix.platform.docker_target, 'linux/amd64')
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
