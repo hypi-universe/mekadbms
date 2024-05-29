@@ -89,6 +89,12 @@ jobs:
           brew install --cask --no-quarantine docker
           brew install bash-completion
           brew install docker-completion
+          brew install docker-machine
+          brew install virtualbox --cask
+          docker-machine create --driver virtualbox default
+          docker-machine env default
+          eval $(docker-machine env default)
+          docker-machine ls
           set -e
           set -o xtrace
           # initial open can fail so retry
@@ -198,6 +204,7 @@ jobs:
         working-directory: mekadb
         #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
         run: |
+          eval $(docker-machine env default)
           rustup show
           rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
           export RUSTFLAGS="-C target-feature=+crt-static"
@@ -208,6 +215,7 @@ jobs:
         working-directory: mekadb
         #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
         run: |
+          eval $(docker-machine env default)
           rustup show
           rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
           export RUSTFLAGS="-C target-feature=+crt-static" && \
