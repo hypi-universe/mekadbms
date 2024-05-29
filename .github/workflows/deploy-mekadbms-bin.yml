@@ -40,8 +40,8 @@ jobs:
             command: build
           - os_name: Linux-x86_64
             os: ubuntu-latest
-            #target: x86_64-unknown-linux-gnu
-            target: x86_64-unknown-linux-musl
+            target: x86_64-unknown-linux-gnu
+#            target: x86_64-unknown-linux-musl
             docker_target: linux/amd64
             bin: mekadbms-linux-amd64
             command: build
@@ -82,9 +82,9 @@ jobs:
           tags: type=raw,value={{branch}}-{{sha}}
 
 #      #Docker is not installed - see https://github.com/actions/runner-images/blob/main/images/macos/macos-14-Readme.md
-#      - name: Install Docker (Mac)
-#        if: contains(matrix.platform.os_name, 'macOS')
-#        run: brew install docker
+      - name: Install Docker (Mac)
+        if: contains(matrix.platform.os_name, 'macOS')
+        run: brew install --cask docker
 #
 #      - name: Set up QEMU
 #        uses: docker/setup-qemu-action@v3
