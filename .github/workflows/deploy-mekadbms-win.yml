@@ -70,6 +70,7 @@ jobs:
       - name: cargo generate-lockfile
         # enable this ci template to run regardless of whether the lockfile is checked in or not
         if: hashFiles('Cargo.lock') == ''
+        working-directory: mekadb
         run: cargo generate-lockfile
 
         #Use rustup target list to get full list of rust targets
@@ -77,20 +78,19 @@ jobs:
         #See for linker export https://github.com/rust-lang/rust/issues/28924#issuecomment-580828030
       - name: build (windows)
         if: matrix.platform.os_name == 'Windows-x86_64'
+        working-directory: mekadb
         run: |
           rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
           rustup show
           cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
 
-      - name: Rename binary (linux and macos)
-        run: mv target/${{ matrix.platform.target }}/release/mekadbms target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
-        if: matrix.platform.os_name != 'Windows-x86_64'
-
       - name: Rename binary (windows)
+        working-directory: mekadb
         run: mv target/${{ matrix.platform.target }}/release/mekadbms.exe target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
         if: matrix.platform.os_name == 'Windows-x86_64'
 
       - name: Generate SHA-256
+        working-directory: mekadb
         run: shasum -a 256 target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} | cut -d ' ' -f 1 > target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}.sha256
 
 #      - name: Release binary and SHA-256 checksum to GitHub
@@ -103,6 +103,7 @@ jobs:
 #            target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}.sha256
 
       - name: Generate Dockerfile
+        working-directory: mekadb
         run: |
           (Get-Content ./mekadbms/Dockerfile.win).Replace('mekadbmsbin', 'target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}') | Set-Content ./mekadbms/Dockerfile.win
           Get-Content ./mekadbms/Dockerfile.win
@@ -115,6 +116,7 @@ jobs:
 
       - name: Build and push mekadb image
         id: docker_build_mekadb
+        working-directory: mekadb
         run: |
-          docker build mekadb --platform ${{ matrix.platform.docker_target }} --label ${{ steps.meta.outputs.labels }} -f mekadb/mekadbms/dockerfile.win -t hypi/${{ steps.meta.outputs.tags }}
+          docker build . --platform ${{ matrix.platform.docker_target }} --label ${{ steps.meta.outputs.labels }} -f mekadbms/dockerfile.win -t hypi/${{ steps.meta.outputs.tags }}
           docker push hypi/${{ steps.meta.outputs.tags }}
