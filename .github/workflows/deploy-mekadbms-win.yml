@@ -87,6 +87,7 @@ jobs:
         #https://aws.github.io/aws-lc-rs/requirements/windows.html
         run: |
           set PATH="C:\Program Files\NASM;%PATH%"
+          set AWS_LC_SYS_NO_ASM="true"
           rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
           rustup show
           cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
