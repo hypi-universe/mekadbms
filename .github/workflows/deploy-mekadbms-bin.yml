@@ -86,7 +86,6 @@ jobs:
       - name: Install Docker (Mac)
         if: contains(matrix.platform.os_name, 'macOS')
         run: |
-          brew uninstall docker 
           brew install --cask docker
           brew install bash-completion
           brew install docker-completion
