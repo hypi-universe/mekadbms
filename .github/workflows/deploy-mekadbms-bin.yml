@@ -146,6 +146,7 @@ jobs:
         #rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
         #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
         run: |
+          rustup target list
           rustup target add ${{ matrix.toolchain }}-${{ matrix.platform.target }}
           rustup show
           export RUSTFLAGS="-C target-feature=+crt-static"
