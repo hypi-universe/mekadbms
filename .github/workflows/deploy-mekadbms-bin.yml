@@ -148,9 +148,10 @@ jobs:
         run: |
           sudo apt-get install -y gcc-arm-linux* g++-arm-linux*
           which gcc-arm-linux-gnueabihf || true
-          tree -hDR /usr | grep 'arm'
-          export CC=gcc-arm-linux-gnueabihf
-          export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=/usr/bin/gcc-arm-linux-gnueabihf
+          # tree -hDR /usr | grep 'arm'
+          ls -ahl /usr/arm-linux-gnueabi/arm-linux-gnueabihf-gcc
+          export CC=arm-linux-gnueabihf-gcc
+          export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=/usr/arm-linux-gnueabi/arm-linux-gnueabihf-gcc
           rustup target list
           rustup target add ${{ matrix.platform.target }}
           rustup show
