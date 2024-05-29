@@ -218,12 +218,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
-            gh release create ${{ steps.meta.outputs.version }}
+            gh release edit ${{ steps.meta.outputs.version }}
             "target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}#${{ matrix.platform.bin }}"
             "target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}.sha256#${{ matrix.platform.bin }}"
             --draft           
             --generate-notes
-            --title "Version ${{ steps.meta.outputs.version }} (or some other name)"
+            --title "Version ${{ steps.meta.outputs.version }}"
 #        with:
 #          tag_name: ${{ steps.params.outputs.mekadbTag }}
 #          token: ${{ secrets.GITHUB_TOKEN }}
