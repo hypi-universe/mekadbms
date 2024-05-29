@@ -320,8 +320,7 @@ jobs:
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.tags }}
-#          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
 
       - uses: actions/checkout@v4
         with:
@@ -332,7 +331,7 @@ jobs:
         run: |
           git config --global user.email "github-action@hypi.io"
           git config --global user.name "Hypi Github Action"
-          git tag ${{ env.tag }}
+          git tag ${{ steps.meta.outputs.version }}
           git pull origin $(git rev-parse --abbrev-ref HEAD)
           git push origin $(git rev-parse --abbrev-ref HEAD)
           git push origin --tags
