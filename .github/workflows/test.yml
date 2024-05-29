@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
           token: ${{ secrets.CROSS_REPO_TOKEN }}
       #Configure git to auth with the cross repo PAT
       - run: git config --global url."https://${{ secrets.CROSS_REPO_TOKEN }}@github.com".insteadOf ssh://git@github.com

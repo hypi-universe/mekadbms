@@ -73,7 +73,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
           token: ${{ secrets.CROSS_REPO_TOKEN }}
       #Configure git to auth with the cross repo PAT
       - run: git config --global url."https://${{ secrets.CROSS_REPO_TOKEN }}@github.com".insteadOf ssh://git@github.com
@@ -142,6 +142,7 @@ jobs:
         #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
         #rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
         run: |
+          tree -hDR
           rustup show && \
           cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
 
@@ -326,7 +327,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
           token: ${{ secrets.CROSS_REPO_TOKEN }}
 
       - name: Tag and push
