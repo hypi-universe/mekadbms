@@ -52,7 +52,8 @@ jobs:
             command: build
           - os_name: Linux-x86_64
             os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
+            #target: x86_64-unknown-linux-gnu
+            target: x86_64-unknown-linux-musl
             docker_target: linux/amd64
             bin: mekadbms-linux-amd64
             command: build
@@ -142,8 +143,8 @@ jobs:
         #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
         #rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
         run: |
-          tree -hDR
-          rustup show && \
+          rustup show
+          export RUSTFLAGS="-C target-feature=+crt-static" && \
           cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
 
       - name: build ARM
