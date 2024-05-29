@@ -223,7 +223,7 @@ jobs:
             "target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}#${{ matrix.platform.bin }}"
             "target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}.sha256#${{ matrix.platform.bin }}"
             --draft           
-            --generate-notes
+            --latest
             --title "Version ${{ steps.meta.outputs.version }}"
 #        with:
 #          tag_name: ${{ steps.params.outputs.mekadbTag }}
