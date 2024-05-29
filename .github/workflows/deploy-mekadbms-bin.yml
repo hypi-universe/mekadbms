@@ -99,6 +99,9 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: true
+          cache-targets: true
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v2
@@ -216,13 +219,13 @@ jobs:
         run: tree -hDR target | grep 'mekadbms'
 
       - name: Release binary and SHA-256 checksum to GitHub
-        working-directory: mekadb
+        #working-directory: mekadb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
             gh release upload ${{ steps.meta.outputs.version }}
-            "target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}#${{ matrix.platform.bin }}"
-            "target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}.sha256#${{ matrix.platform.bin }}"
+            "mekadb/target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}#${{ matrix.platform.bin }}"
+            "mekadb/target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}.sha256#${{ matrix.platform.bin }}"
             --clobber
 #        with:
 #          tag_name: ${{ steps.params.outputs.mekadbTag }}
