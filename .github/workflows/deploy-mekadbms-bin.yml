@@ -89,7 +89,6 @@ jobs:
           brew install --cask docker
           brew install bash-completion
           brew install docker-completion
-          brew install docker-machine-completion
           open -a Docker
           ls -l /usr/local/bin/docker*
           docker ps
