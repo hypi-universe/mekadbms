@@ -90,8 +90,7 @@ jobs:
           brew install bash-completion
           brew install docker-completion
           brew install docker-machine
-          brew install virtualbox --cask
-          docker-machine create --driver virtualbox default
+          brew services start docker-machine
           docker-machine env default
           eval $(docker-machine env default)
           docker-machine ls
