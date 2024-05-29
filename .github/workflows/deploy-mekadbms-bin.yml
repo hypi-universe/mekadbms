@@ -213,9 +213,10 @@ jobs:
 
       - name: Show bins
         working-directory: mekadb
-        run: tree -hDR target
+        run: tree -hDR target | grep 'mekadbms'
 
       - name: Release binary and SHA-256 checksum to GitHub
+        working-directory: mekadb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
