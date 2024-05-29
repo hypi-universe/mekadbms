@@ -89,8 +89,10 @@ jobs:
           brew install --cask docker
           brew install bash-completion
           brew install docker-completion
-          open -a Docker
-          sleep 60
+          # initial open can fail so retry
+          while (! docker ps &>/dev/null ); do
+            open -a Docker; sleep 1
+          done
           ls -l /usr/local/bin/docker*
           docker ps
       #
