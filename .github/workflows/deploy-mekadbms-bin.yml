@@ -90,6 +90,7 @@ jobs:
           brew install bash-completion
           brew install docker-completion
           open -a Docker
+          sleep 60
           ls -l /usr/local/bin/docker*
           docker ps
       #
