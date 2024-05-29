@@ -1,0 +1,35 @@
+permissions:
+  contents: write
+  packages: write
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - mekadb/clients/**
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+name: mekadbms - create draft release
+jobs:
+  create_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}
+          tags: type=raw,value={{branch}}-{{sha}}
+
+      - name: Release binary and SHA-256 checksum to GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh release create ${{ steps.meta.outputs.version }}
+          --draft           
+          --generate-notes
+          --title "Version ${{ steps.meta.outputs.version }}"
