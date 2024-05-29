@@ -83,7 +83,10 @@ jobs:
       - name: build (windows)
         if: matrix.platform.os_name == 'Windows-x86_64'
         working-directory: mekadb
+        #nasm isn't added to path so need to do it manually https://github.com/chocolatey/choco/issues/2794
+        #https://aws.github.io/aws-lc-rs/requirements/windows.html
         run: |
+          set PATH="C:\Program Files\NASM;%PATH%"
           rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
           rustup show
           cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
