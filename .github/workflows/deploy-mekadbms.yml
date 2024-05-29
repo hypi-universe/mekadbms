@@ -20,7 +20,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: false
 
-name: Build and publish MekaDB Management Server (mekadbms)
+name: mekadbms - linux/mac
 jobs:
   build:
     name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
@@ -123,6 +123,7 @@ jobs:
       - name: cargo generate-lockfile
         # enable this ci template to run regardless of whether the lockfile is checked in or not
         if: hashFiles('Cargo.lock') == ''
+        working-directory: mekadb
         run: cargo generate-lockfile
 
         #      - name: start opensearch
@@ -137,6 +138,7 @@ jobs:
         #See for linker export https://github.com/rust-lang/rust/issues/28924#issuecomment-580828030
       - name: build X86
         if: contains(matrix.platform.target, 'x86_64')
+        working-directory: mekadb
         #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
         #rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
         run: |
@@ -145,6 +147,7 @@ jobs:
 
       - name: build ARM
         if: contains(matrix.platform.os_name, 'aarch64')
+        working-directory: mekadb
         #necessary or we get "jammy-updates/restricted amd64 Packages " errors from update
         #sudo rm -f /etc/apt/sources.list.d/archive_uri-*
         #see https://github.com/actions/runner-images/issues/5656
@@ -184,9 +187,11 @@ jobs:
           cargo build --verbose --release --package mekadbms --target ${{ matrix.platform.target }}
 
       - name: Rename binary (linux and macos)
+        working-directory: mekadb
         run: mv target/${{ matrix.platform.target }}/release/mekadbms target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
 
       - name: Generate SHA-256
+        working-directory: mekadb
         run: shasum -a 256 target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} | cut -d ' ' -f 1 > target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}.sha256
 
 #      - name: Release binary and SHA-256 checksum to GitHub
@@ -200,6 +205,7 @@ jobs:
 
       - name: Generate Dockerfile
         if: contains(matrix.platform.os_name, 'x86_64')
+        working-directory: mekadb
         run: |
           sed -i -e 's#FROM_FLAG#--platform=linux/amd64#g' ./mekadbms/Dockerfile
           sed -i -e 's#mekadbmsbin#target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}#g' ./mekadbms/Dockerfile
@@ -207,6 +213,7 @@ jobs:
 
       - name: Generate Dockerfile
         if: contains(matrix.platform.os_name, 'aarch64')
+        working-directory: mekadb
         run: |
           sed -i -e 's#FROM_FLAG#--platform=linux/arm64#g' ./mekadbms/Dockerfile
           cmds="RUN apk add gcompat" && \
@@ -257,6 +264,7 @@ jobs:
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
+        working-directory: mekadb
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.docker_build_mekadb.outputs.digest }}"
