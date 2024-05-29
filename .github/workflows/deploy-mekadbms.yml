@@ -1,0 +1,331 @@
+permissions:
+  contents: write
+  packages: write
+on:
+  push:
+    branches:
+      - main
+    #    - feature/vitess
+    paths-ignore:
+      - clients/**
+  pull_request:
+  workflow_dispatch:
+env:
+  REGISTRY_IMAGE: hypi/mekadbms
+
+# If new code is pushed to a PR branch, then cancel in progress workflows for that PR.
+# Ensures that we don't waste CI time, and returns results quicker
+# https://github.com/jonhoo/rust-ci-conf/pull/5
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: false
+
+name: Build and publish MekaDB Management Server (mekadbms)
+jobs:
+  build:
+    name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
+    runs-on: ${{ matrix.platform.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        #Since rust links against specific targets we must use matrix to produce a build per target
+        #An example setup is given in https://docs.docker.com/build/ci/github-actions/multi-platform/
+        #Make sure the build-and-push action has the same steps and options especially important is the metadata
+        #Since it generates the manifests that are later merged
+        #We may be interested in using https://crosstool-ng.github.io/docs/introduction/ in the future
+        #cross (https://github.com/cross-rs/cross/) looks promising but didn't work locally so didn't try in CI
+        #We need a windows docker variant - https://hub.docker.com/_/docker/tags?page=2&page_size=&ordering=&name=windows
+        #probably by having a 2nd Docker file
+        #we'll need a test suite for running the generated builds now
+        #        platform:
+        #          - linux/amd64
+        #          - linux/arm64
+        platform:
+          - os_name: Linux-aarch64
+            os: ubuntu-latest
+#            target: aarch64-unknown-linux-musl
+            #hf = hard float i.e. where the CPU includes floating point support
+            target: arm-unknown-linux-gnueabihf
+            docker_target: linux/arm64
+            bin: mekadbms-linux-arm64
+            command: build
+          - os_name: Linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            docker_target: linux/amd64
+            bin: mekadbms-linux-amd64
+            command: build
+#          - os_name: macOS-x86_64
+#            os: macOS-latest
+#            target: x86_64-apple-darwin
+#            docker_target: linux/amd64
+#            bin: mekadbms-darwin-amd64
+#            command: both
+#          - os_name: macOS-aarch64
+#            os: macOS-latest
+#            target: aarch64-apple-darwin
+#            docker_target: linux/arm64
+#            bin: mekadbms-darwin-arm64
+#            command: both
+        toolchain:
+          - stable
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+      #Configure git to auth with the cross repo PAT
+      - run: git config --global url."https://${{ secrets.CROSS_REPO_TOKEN }}@github.com".insteadOf ssh://git@github.com
+      #      - run: git config --global url."https://${{ secrets.CROSS_REPO_TOKEN }}@github.com".insteadOf https://github.com
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}
+          tags: type=raw,value={{branch}}-{{sha}}
+
+      #Docker is not installed - see https://github.com/actions/runner-images/blob/main/images/macos/macos-14-Readme.md
+      - name: Install Docker (Mac)
+        if: contains(matrix.platform.os_name, 'macOS')
+        run: brew install docker
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v2
+        with:
+          version: "25.x"
+
+      - name: Install ${{ matrix.toolchain }}
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          targets: ${{ matrix.platform.target }}
+
+      #      - name: Install Protoc
+      #        uses: arduino/setup-protoc@v2
+      #
+      #      - uses: isbang/compose-action@v1.5.1
+      #        with:
+      #          #could have a copy in .github with different settings to local
+      #          #compose-file: ".github/docker-compose.yml"
+      #          compose-file: "docker-compose.yml"
+      #          up-flags: -d --wait
+
+      - name: cargo generate-lockfile
+        # enable this ci template to run regardless of whether the lockfile is checked in or not
+        if: hashFiles('Cargo.lock') == ''
+        run: cargo generate-lockfile
+
+        #      - name: start opensearch
+        #        run: docker compose up -d --wait
+        #
+        #      #it'll start before
+        #      - name: Wait for Opensearch to start
+        #        run: sleep 10
+
+        #Use rustup target list to get full list of rust targets
+        #docker:26.1.3-dind is available for amd64,arm64,arm/v6,arm/v7
+        #See for linker export https://github.com/rust-lang/rust/issues/28924#issuecomment-580828030
+      - name: build X86
+        if: contains(matrix.platform.target, 'x86_64')
+        #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
+        #rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
+        run: |
+          rustup show && \
+          cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
+
+      - name: build ARM
+        if: contains(matrix.platform.os_name, 'aarch64')
+        #necessary or we get "jammy-updates/restricted amd64 Packages " errors from update
+        #sudo rm -f /etc/apt/sources.list.d/archive_uri-*
+        #see https://github.com/actions/runner-images/issues/5656
+        #we symlink /usrarm-linux-* .so.<N> files to /lib because rustc looks for them there and ignores LD_LIBRARY_PATH env - clue from https://stackoverflow.com/a/52832543/400048
+        #clues from about ubuntu deps https://groups.google.com/g/linux.debian.bugs.dist/c/6P4cw8mMwO4
+        #same from https://askubuntu.com/a/250721/10273
+        #and https://askubuntu.com/a/676704/10273
+        #didn't work but was useful https://unix.stackexchange.com/a/751333/4489
+        #linker options from https://blog.rust-lang.org/2016/05/13/rustup.html
+        #rm -rf ~/.cargo/registry/index because after installing arm old deps appear corrupt? https://stackoverflow.com/a/69499185/400048
+        #rm -rf ~/.cargo/registry - only seems to be via rustup https://stackoverflow.com/a/41093785/400048
+        #cargo vendor is necessary because when cargo is run after arm dependencies are installed, it fails to resolve the git dependency we have
+        run: |
+          set -e
+          set -o xtrace
+          cargo update --verbose && \
+          cargo vendor >> .cargo/config.toml && \
+          cat .cargo/config.toml && \
+          sudo rm -f /etc/apt/sources.list.d/archive* && \
+          sudo dpkg --add-architecture arm64 && \
+          sudo apt-get -y update || true && \
+          sudo apt-get -y install \
+                      gcc-arm-linux-gnueabihf \
+                      g++-arm-linux-gnueabihf \
+                      libc6-armhf-cross \
+                      libssl-dev  && \
+          ls -ahl /usr/arm-linux-gnueabihf/lib && \
+          export CC=arm-linux-gnueabihf-gcc && \
+          export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=/usr/bin/arm-linux-gnueabihf-gcc && \
+          export RUSTFLAGS="-L=/usr/arm-linux-gnueabihf/lib -C target-feature=+crt-static" && \
+          rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }} && \
+          rustup show && \
+          for filename in "/usr/arm-linux-gnueabihf/lib/"*.so.*; do sudo ln -s "$filename" "/lib/$(basename $filename)"; done && \
+          rm -rf ~/.cargo/registry/index && \
+          rm -rf ~/.cargo/registry && \
+          rm -rf ~/.cargo/git && \
+          cargo build --verbose --release --package mekadbms --target ${{ matrix.platform.target }}
+
+      - name: Rename binary (linux and macos)
+        run: mv target/${{ matrix.platform.target }}/release/mekadbms target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
+
+      - name: Generate SHA-256
+        run: shasum -a 256 target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} | cut -d ' ' -f 1 > target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}.sha256
+
+#      - name: Release binary and SHA-256 checksum to GitHub
+#        uses: softprops/action-gh-release@v1
+#        with:
+#          tag_name: ${{ steps.params.outputs.mekadbTag }}
+#          token: ${{ secrets.GITHUB_TOKEN }}
+#          files: |
+#            target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
+#            target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}.sha256
+
+      - name: Generate Dockerfile
+        if: contains(matrix.platform.os_name, 'x86_64')
+        run: |
+          sed -i -e 's#FROM_FLAG#--platform=linux/amd64#g' ./mekadbms/Dockerfile
+          sed -i -e 's#mekadbmsbin#target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}#g' ./mekadbms/Dockerfile
+          cat ./mekadbms/Dockerfile
+
+      - name: Generate Dockerfile
+        if: contains(matrix.platform.os_name, 'aarch64')
+        run: |
+          sed -i -e 's#FROM_FLAG#--platform=linux/arm64#g' ./mekadbms/Dockerfile
+          cmds="RUN apk add gcompat" && \
+          sed -i -e "s/#RUN_COMMANDS_HERE/$cmds/g" ./mekadbms/Dockerfile && \
+          sed -i -e 's#mekadbmsbin#target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}#g' ./mekadbms/Dockerfile && \
+          cat ./mekadbms/Dockerfile
+
+      #      - name: darwin x86 build
+      #        if: contains(matrix.platform, 'linux/arm64')
+      #        run: |
+      #          rustup target add x86_64-apple-darwin
+      #          cargo build --release --package mekadbms --target x86_64-apple-darwin
+
+      #      - name: start mekadb in the background
+      #        run: target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} 2>&1 &
+      #
+      #      - name: Wait for MekaDB to start
+      #        run: sleep 15
+      #
+      #      # https://twitter.com/jonhoo/status/1571290371124260865
+      #      - name: cargo test --locked
+      #        run: cargo test --locked --all-features --all-targets
+      #
+      #      # https://github.com/rust-lang/cargo/issues/6669
+      #      - name: cargo test --doc
+      #        run: cargo test --locked --all-features --doc
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push mekadb image
+        id: docker_build_mekadb
+        uses: docker/build-push-action@v5
+        with:
+          context: mekadb
+          file: mekadbms/Dockerfile
+          platforms: ${{ matrix.platform.docker_target }}
+          #push: true
+          #required https://github.com/docker/build-push-action/issues/906#issuecomment-1674567311
+          #load: true
+          build-args: |
+            CI_USER=${{ secrets.CI_USER }}
+            CI_PASS=${{ secrets.CI_PASS }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.docker_build_mekadb.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"          
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.platform.target }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}
+          tags: type=raw,value={{branch}}-{{sha}}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $("-t ${{ steps.meta.outputs.tags }}" <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+#          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+#            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.tags }}
+#          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+
+      - name: Tag and push
+        run: |
+          git config --global user.email "github-action@hypi.io"
+          git config --global user.name "Hypi Github Action"
+          git tag ${{ env.tag }}
+          git pull origin $(git rev-parse --abbrev-ref HEAD)
+          git push origin $(git rev-parse --abbrev-ref HEAD)
+          git push origin --tags

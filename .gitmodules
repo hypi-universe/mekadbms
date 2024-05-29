@@ -1,0 +1,3 @@
+[submodule "mekadb"]
+	path = mekadb
+	url = git@github.com:hypi-universe/mekadb.git
