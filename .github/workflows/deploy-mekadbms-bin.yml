@@ -147,6 +147,8 @@ jobs:
         #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
         run: |
           sudo apt-get install -y gcc-arm-linux* g++-arm-linux*
+          which gcc-arm-linux-gnueabihf || true
+          tree -hDR /usr | grep 'arm'
           export CC=gcc-arm-linux-gnueabihf
           export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=/usr/bin/gcc-arm-linux-gnueabihf
           rustup target list
