@@ -102,6 +102,7 @@ jobs:
         uses: arduino/setup-protoc@v2
         with:
           version: "25.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install ${{ matrix.toolchain }}
         uses: dtolnay/rust-toolchain@master
