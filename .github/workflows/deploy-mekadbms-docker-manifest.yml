@@ -83,9 +83,14 @@ jobs:
           --amend hypi/mekadbms:${{ env.version }}-mac-aarch64 \
           --amend hypi/mekadbms:${{ env.version }}-windows-amd64 && \
           docker manifest push hypi/mekadbms:${{ env.version }} && \
-          docker pull hypi/mekadbms:${{ env.version }} && \
-          docker tag hypi/mekadbms:${{ env.version }} hypi/mekadbms:latest && \
-          docker push hypi/mekadbms:latest 
+          docker manifest create \
+          hypi/mekadbms:latest \
+          --amend hypi/mekadbms:${{ env.version }}-linux-amd64 \
+          --amend hypi/mekadbms:${{ env.version }}-linux-aarch64 \
+          --amend hypi/mekadbms:${{ env.version }}-mac-amd64 \
+          --amend hypi/mekadbms:${{ env.version }}-mac-aarch64 \
+          --amend hypi/mekadbms:${{ env.version }}-windows-amd64 && \
+          docker manifest push hypi/mekadbms:latest
 
       - name: Push git tag
         run: |
@@ -108,10 +113,11 @@ jobs:
           
             ## Docker
           
-              For Docker, you need a single command.
+            For Docker, you need a single command.
+          
             ### On Linux and Mac
           
-              `docker run --privileged -it -p 2023 -p 2024 hypi/mekadbms:${{ env.version}}`
+              docker run --privileged -it -p 2023 -p 2024 hypi/mekadbms:${{ env.version}}
 
             On Linux and Mac, because MekaDB starts and manages other containers for you dynamically, this is needed to provide it access to Docker running on your machine.
             If you do not want to provide `--privileged` then you can set the environment variable `MEKADB_OPENSEARCH_HOST` to a URL where Opensearch is running and MekaDB will use it instead of starting one itself. 
@@ -120,7 +126,7 @@ jobs:
             `sudo` is not needed unless your Docker requires it to run commands. MekaDB will get permission denied and you need to re-run the Docker command with `sudo`.
 
             ### On windows
-              `docker run -it -p 2023 -p 2024 hypi/mekadbms:${{ env.version}}`
+              docker run -it -p 2023 -p 2024 hypi/mekadbms:${{ env.version}}
             Windows does not support `--privileged` and it is not needed.
 
             ## Binaries
