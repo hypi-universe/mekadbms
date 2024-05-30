@@ -24,7 +24,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: false
 
-name: mekadbms - build - docker
+name: mekadbms - build - multi-arch docker
 jobs:
   merge_tags:
     name: Merge and push multi-arch tag
