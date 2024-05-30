@@ -9,6 +9,10 @@ on:
     types:
       - completed
   workflow_dispatch:
+    inputs:
+      commit:
+        type: string
+        description: The commit that produced the release this workflow should run on
 env:
   REGISTRY_IMAGE: hypi/mekadbms
 
@@ -24,7 +28,7 @@ jobs:
   build_docker_images:
     name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
     runs-on: ${{ matrix.platform.os }}
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || inputs.commit}}
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -72,6 +76,8 @@ jobs:
         with:
           submodules: recursive
           token: ${{ secrets.CROSS_REPO_TOKEN }}
+          #defaults to '' if inputs.commit is not set (when triggered automatically)
+          ref: ${{ inputs.commit }}
       #Configure git to auth with the cross repo PAT
       - run: git config --global url."https://${{ secrets.CROSS_REPO_TOKEN }}@github.com".insteadOf ssh://git@github.com
       #      - run: git config --global url."https://${{ secrets.CROSS_REPO_TOKEN }}@github.com".insteadOf https://github.com
@@ -83,7 +89,7 @@ jobs:
           images: ${{ env.REGISTRY_IMAGE }}
           tags: type=raw,value={{branch}}-{{sha}}
 
-      - name: Release binary and SHA-256 checksum to GitHub
+      - name: Download binary from GitHub
         working-directory: mekadb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
