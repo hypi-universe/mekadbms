@@ -76,7 +76,9 @@ This is doable with Github actions but takes fiddling.
 # Docker
 * Everyone seems to use QEMU for cross platform builds - https://github.com/docker/setup-qemu-action
   * Found many issues with it including builds that complete but don't run on the target afterwards
-* 
+* Workflow builds
+  * Old attempt for multiplatform docker https://github.com/hypi-universe/mekadbms/commit/ab5c46fa238d7483f9350465c1638911dfb998a4
+  * Old attempt for windows https://github.com/hypi-universe/mekadbms/commit/4e00a5161547b0d1503a551f680f1069caa3e99e
 
 Links:
 

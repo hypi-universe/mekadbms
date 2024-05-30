@@ -9,15 +9,6 @@ on:
     types:
       - completed
   workflow_dispatch:
-#on:
-#  push:
-#    branches:
-#      - main
-#    #    - feature/vitess
-#    paths-ignore:
-#      - clients/**
-#  pull_request:
-#  workflow_dispatch:
 env:
   REGISTRY_IMAGE: hypi/mekadbms
 
