@@ -110,14 +110,13 @@ jobs:
       - name: Determine release
         if: matrix.platform.os_name == 'Windows-x86_64'
         run: |
-          version='${{ inputs.release }}'
+          Set-Variable -Name "version" -Value "${{ inputs.release }}"
           if ($version) { 
             echo "Release is present in inputs as $version" 
           } else { 
-            version="${{ steps.meta.outputs.version }}"
+            Set-Variable -Name "version" -Value "${{ steps.meta.outputs.version }}"
             echo "Release is NOT present in inputs so used meta generated version of $version"
           }
-    
           Add-Content -Path $env:GITHUB_ENV -Value "version=$version"
 
       - name: Download binary from GitHub
