@@ -93,6 +93,7 @@ jobs:
           tags: type=raw,value={{branch}}-{{sha}}
 
       - name: Determine release
+        if: matrix.platform.os_name != 'Windows-x86_64'
         run: |
           set -e
           set -o xtrace
@@ -105,6 +106,19 @@ jobs:
           fi
     
           echo "version=$(echo ${version})" >> $GITHUB_ENV
+
+      - name: Determine release
+        if: matrix.platform.os_name == 'Windows-x86_64'
+        run: |
+          version='${{ inputs.release }}'
+          if ($version) { 
+            echo "Release is present in inputs as $version" 
+          } else { 
+            version="${{ steps.meta.outputs.version }}"
+            echo "Release is NOT present in inputs so used meta generated version of $version"
+          }
+    
+          Add-Content -Path $env:GITHUB_ENV -Value "version=$version"
 
       - name: Download binary from GitHub
         env:
