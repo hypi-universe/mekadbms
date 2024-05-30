@@ -99,13 +99,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           notes='
-            # Hypi MekaDB Management Server - MekaDBMS v${{ env.version }}
+            # Hypi MekaDB `${{ env.version }}`
+          
             Full Changelog: https://github.com/hypi-universe/mekadbms/commits/${{ env.version }}
             # Downloads
+          
             We provide binaries to download and run MakeDB or Docker images
+          
             ## Docker
+          
               For Docker, you need a single command.
             ### On Linux and Mac
+          
               `docker run --privileged -it -p 2023 -p 2024 hypi/mekadbms:${{ env.version}}`
 
             On Linux and Mac, because MekaDB starts and manages other containers for you dynamically, this is needed to provide it access to Docker running on your machine.
@@ -128,5 +133,7 @@ jobs:
             '
           gh release edit ${{ env.version }} \
           --notes "$notes" \
+          --draft=false \
+          --latest \
           --tag ${{ env.version }} 
           
