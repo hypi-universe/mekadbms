@@ -124,14 +124,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         #  is wrong when triggered manually
         #Removed from after the `download` argument for now so it always runs on the latest release
-        run: |
-          set -e
-          set -o xtrace
-          mkdir -p mekadb/target/${{ matrix.platform.target }}/release
-          gh release download ${{ env.version }} \
-          --dir mekadb/target/${{ matrix.platform.target }}/release \
-          --pattern "${{ matrix.platform.bin }}" \
-          --clobber
+        run: >-
+          mkdir -p mekadb/target/${{ matrix.platform.target }}/release;
+          gh release download ${{ env.version }} 
+          --dir mekadb/target/${{ matrix.platform.target }}/release 
+          --pattern "${{ matrix.platform.bin }}" 
+          --clobber;
           ls -hl mekadb/target/${{ matrix.platform.target }}/release
 
 #      - name: Set up Docker Buildx
