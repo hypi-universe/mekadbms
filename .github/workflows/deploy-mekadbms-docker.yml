@@ -94,7 +94,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir mekadb/target/${{ matrix.platform.target }}/release
+          mkdir -p mekadb/target/${{ matrix.platform.target }}/release
           gh release download ${{ steps.meta.outputs.version }} \
           --dir mekadb/target/${{ matrix.platform.target }}/release \
           --pattern "${{ matrix.platform.bin }}" \
