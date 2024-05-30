@@ -168,6 +168,7 @@ jobs:
         if: matrix.platform.os_name == 'Windows-x86_64'
         working-directory: mekadb
         run: |
+          chmod +x target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
           docker build . --platform ${{ matrix.platform.docker_target }} -f mekadbms/dockerfile.win -t hypi/mekadbms:${{ env.version }}-${{ matrix.platform.arch }}
           docker push hypi/mekadbms:${{ env.version }}-${{ matrix.platform.arch }}
 

@@ -96,8 +96,7 @@ jobs:
 
       - name: Generate the notes
         run: |
-          {
-            echo 'NOTES<<"EOF"'
+          notes='
             # Hypi MekaDB Management Server - MekaDBMS v${{ env.version }}
             Full Changelog: https://github.com/hypi-universe/mekadbms/commits/${{ env.version }}
             # Downloads
@@ -124,8 +123,8 @@ jobs:
             * Linux AMD/Intel/x86 - [mekadbms-linux-amd64](https://github.com/hypi-universe/mekadbms/releases/download/${{ env.version }}/mekadbms-linux-amd64)
             * Mac ARM/AARCH64 - [mekadbms-darwin-arm64](https://github.com/hypi-universe/mekadbms/releases/download/${{ env.version }}/mekadbms-darwin-arm64)
             * Mac AMD/Intel/x86 - [mekadbms-darwin-amd64](https://github.com/hypi-universe/mekadbms/releases/download/${{ env.version }}/mekadbms-darwin-amd64)
-            echo EOF
-          } >> "$GITHUB_ENV"
+            '
+          echo "notes=$(echo ${notes})" >> $GITHUB_ENV
 
       - name: Publish Github release
         env:
@@ -133,6 +132,6 @@ jobs:
         run: |
           gh release edit ${{ env.version }} \
           --latest \
-          --notes "$env.NOTES" \
+          --notes "$env.notes" \
           --tag ${{ env.version }} 
           

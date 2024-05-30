@@ -79,7 +79,10 @@ This is doable with Github actions but takes fiddling.
 * Workflow builds
   * Old attempt for multiplatform docker https://github.com/hypi-universe/mekadbms/commit/ab5c46fa238d7483f9350465c1638911dfb998a4
   * Old attempt for windows https://github.com/hypi-universe/mekadbms/commit/4e00a5161547b0d1503a551f680f1069caa3e99e
-
+* A clue about multi-arch builds https://github.com/docker/build-push-action/issues/671#issuecomment-1373055782
+* This is the "modern" way to do it https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners but doesn't work on windows 
+* I then found this https://medium.com/@life-is-short-so-enjoy-it/docker-how-to-build-and-push-multi-arch-docker-images-to-docker-hub-64dea4931df9 which explains
+* Importantly, it lead to https://www.docker.com/blog/multi-arch-build-and-images-the-simple-way/ which says it is the "hard" way...but it turned out to be the good way for us
 Links:
 
 1. https://www.docker.com/blog/multi-arch-build-and-images-the-simple-way/
