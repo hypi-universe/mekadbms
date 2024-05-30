@@ -92,8 +92,6 @@ jobs:
           git config --global user.email "github-action@hypi.io"
           git config --global user.name "Hypi Github Action"
           git tag ${{ env.version }}
-          git pull origin $(git rev-parse --abbrev-ref HEAD)
-          git push origin $(git rev-parse --abbrev-ref HEAD)
           git push origin --tags
 
       - name: Publish Github release
