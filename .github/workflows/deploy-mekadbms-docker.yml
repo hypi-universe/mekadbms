@@ -130,7 +130,7 @@ jobs:
           --dir mekadb/target/${{ matrix.platform.target }}/release 
           --pattern "${{ matrix.platform.bin }}" 
           --clobber;
-          ls -hl mekadb/target/${{ matrix.platform.target }}/release
+          ls mekadb/target/${{ matrix.platform.target }}/release
 
 #      - name: Set up Docker Buildx
 #        uses: docker/setup-buildx-action@v3
