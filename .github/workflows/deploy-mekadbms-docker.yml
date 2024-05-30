@@ -43,6 +43,7 @@ jobs:
             target: aarch64-unknown-linux-gnu
             docker_target: linux/arm64
             bin: mekadbms-linux-arm64
+            arch: linux-aarch64
             command: build
           - os_name: Linux-x86_64
             os: ubuntu-latest
@@ -50,27 +51,33 @@ jobs:
             #            target: x86_64-unknown-linux-musl
             docker_target: linux/amd64
             bin: mekadbms-linux-amd64
+            arch: linux-amd64
             command: build
           - os_name: Windows-x86_64
             os: windows-latest
             target: x86_64-pc-windows-msvc
             bin: mekadbms-amd64.exe
             docker_target: windows/amd64
+            arch: windows-amd64
             command: both
           #https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
           - os_name: macOS-x86_64
             #13 is intel/x86
-            os: macos-13
+            #os: macos-13
+            os: ubuntu-latest
             target: x86_64-apple-darwin
             docker_target: linux/amd64
             bin: mekadbms-darwin-amd64
+            arch: mac-amd64
             command: both
           - os_name: macOS-aarch64
             #macos-14 is arm64/M1
-            os: macOS-14
+            #os: macOS-14
+            os: ubuntu-latest
             target: aarch64-apple-darwin
             docker_target: linux/arm64
             bin: mekadbms-darwin-arm64
+            arch: mac-aarch64
             command: both
         toolchain:
           - stable
@@ -149,8 +156,8 @@ jobs:
         if: matrix.platform.os_name == 'Windows-x86_64'
         working-directory: mekadb
         run: |
-          docker build . --platform ${{ matrix.platform.docker_target }} -f mekadbms/dockerfile.win -t hypi/mekadbms:${{ env.version }}
-          docker push hypi/mekadbms:${{ env.version }}
+          docker build . --platform ${{ matrix.platform.docker_target }} -f mekadbms/dockerfile.win -t hypi/mekadbms:${{ env.version }}-${{ matrix.platform.arch }}
+          docker push hypi/mekadbms:${{ env.version }}-${{ matrix.platform.arch }}
 
       - name: Generate Dockerfile - x86
         if: contains(matrix.platform.os_name, 'x86_64') && matrix.platform.os_name != 'Windows-x86_64'
@@ -165,7 +172,7 @@ jobs:
         working-directory: mekadb
         run: |
           sed -i -e 's#FROM_FLAG#--platform=linux/arm64#g' ./mekadbms/Dockerfile
-          cmds="RUN apk add gcompat" && \
+          cmds="#RUN apk add gcompat" && \
           sed -i -e "s/#RUN_COMMANDS_HERE/$cmds/g" ./mekadbms/Dockerfile && \
           sed -i -e 's#mekadbmsbin#target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}#g' ./mekadbms/Dockerfile && \
           cat ./mekadbms/Dockerfile
@@ -174,45 +181,9 @@ jobs:
         if: matrix.platform.os_name != 'Windows-x86_64'
         working-directory: mekadb
         run: |
-          docker build . --platform ${{ matrix.platform.docker_target }} -f mekadbms/Dockerfile -t hypi/mekadbms:${{ env.version }}
-          docker push hypi/mekadbms:${{ env.version }}
+          docker build . --platform ${{ matrix.platform.docker_target }} -f mekadbms/Dockerfile -t hypi/mekadbms:${{ env.version }}-${{ matrix.platform.arch }}
+          docker push hypi/mekadbms:${{ env.version }}-${{ matrix.platform.arch }}
 
-#      - name: Set up Docker Buildx
-#        uses: docker/setup-buildx-action@v3
-#
-#      - uses: actions/checkout@v4
-#        with:
-#          submodules: recursive
-#          token: ${{ secrets.CROSS_REPO_TOKEN }}
-#
-#      - name: Docker meta
-#        id: meta
-#        uses: docker/metadata-action@v5
-#        with:
-#          images: ${{ env.REGISTRY_IMAGE }}
-#          tags: type=raw,value={{branch}}-{{sha}}
-#
-#      - name: Login to Docker Hub
-#        uses: docker/login-action@v3
-#        with:
-#          username: ${{ secrets.DOCKERHUB_USERNAME }}
-#          password: ${{ secrets.DOCKERHUB_TOKEN }}
-#
-#      - name: Create manifest list and push
-#        working-directory: /tmp/digests
-#        run: |
-#          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-#            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
-#
-#      - name: Inspect image
-#        run: |
-#          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
-#
-#      - uses: actions/checkout@v4
-#        with:
-#          submodules: recursive
-#          token: ${{ secrets.CROSS_REPO_TOKEN }}
-#
 #      - name: Tag and push
 #        run: |
 #          git config --global user.email "github-action@hypi.io"
