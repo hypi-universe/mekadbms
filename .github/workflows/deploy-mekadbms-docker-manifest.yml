@@ -97,7 +97,7 @@ jobs:
       - name: Generate the notes
         run: |
           {
-            echo 'NOTES<<EOF'
+            echo 'NOTES<<"EOF"'
             # Hypi MekaDB Management Server - MekaDBMS v${{ env.version }}
             Full Changelog: https://github.com/hypi-universe/mekadbms/commits/${{ env.version }}
             # Downloads
