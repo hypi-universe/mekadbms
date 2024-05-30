@@ -73,6 +73,8 @@ jobs:
         #  is wrong when triggered manually
         #Removed from after the `download` argument for now so it always runs on the latest release
         run: |
+          set -e
+          set -o xtrace
           docker manifest create \
           hypi/mekadbms:${{ env.version }} \
           --amend hypi/mekadbms:${{ env.version }}-linux-amd64 \
@@ -81,6 +83,7 @@ jobs:
           --amend hypi/mekadbms:${{ env.version }}-mac-aarch64 \
           --amend hypi/mekadbms:${{ env.version }}-windows-amd64 && \
           docker manifest push hypi/mekadbms:${{ env.version }} && \
+          docker pull hypi/mekadbms:${{ env.version }} && \
           docker tag hypi/mekadbms:${{ env.version }} hypi/mekadbms:latest && \
           docker push hypi/mekadbms:latest 
 
