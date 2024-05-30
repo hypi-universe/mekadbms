@@ -94,7 +94,9 @@ jobs:
           git tag ${{ env.version }}
           git push origin --tags
 
-      - name: Generate the notes
+      - name: Publish Github release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           notes='
             # Hypi MekaDB Management Server - MekaDBMS v${{ env.version }}
@@ -124,13 +126,7 @@ jobs:
             * Mac ARM/AARCH64 - [mekadbms-darwin-arm64](https://github.com/hypi-universe/mekadbms/releases/download/${{ env.version }}/mekadbms-darwin-arm64)
             * Mac AMD/Intel/x86 - [mekadbms-darwin-amd64](https://github.com/hypi-universe/mekadbms/releases/download/${{ env.version }}/mekadbms-darwin-amd64)
             '
-          echo "notes=$(echo ${notes})" >> $GITHUB_ENV
-
-      - name: Publish Github release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
           gh release edit ${{ env.version }} \
-          --notes "$env.notes" \
+          --notes "$notes" \
           --tag ${{ env.version }} 
           
