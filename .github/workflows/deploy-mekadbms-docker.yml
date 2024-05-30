@@ -99,6 +99,18 @@ jobs:
           images: ${{ env.REGISTRY_IMAGE }}
           tags: type=raw,value={{branch}}-{{sha}}
 
+      - name: Set up QEMU (Linux/Mac ARM)
+        if: contains(matrix.platform.os_name, 'aarch64') && matrix.platform.os_name != 'Windows-x86_64'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up QEMU package (Linux/Mac ARM)
+        if: contains(matrix.platform.os_name, 'aarch64') && matrix.platform.os_name != 'Windows-x86_64'
+        run: |
+          set -e
+          set -o xtrace
+          sudo apt-get install -y qemu qemu-user-static
+          docker buildx ls
+
       - name: Determine release
         if: matrix.platform.os_name != 'Windows-x86_64'
         run: |
@@ -113,18 +125,6 @@ jobs:
           fi
     
           echo "version=$(echo ${version})" >> $GITHUB_ENV
-
-      - name: Set up QEMU (Linux/Mac ARM)
-        if: contains(matrix.platform.os_name, 'aarch64') && matrix.platform.os_name != 'Windows-x86_64'
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up QEMU package (Linux/Mac ARM)
-        if: contains(matrix.platform.os_name, 'aarch64') && matrix.platform.os_name != 'Windows-x86_64'
-        run: |
-          set -e
-          set -o xtrace
-          sudo apt-get install -y qemu qemu-user-static
-          docker buildx ls
 
       - name: Determine release
         if: matrix.platform.os_name == 'Windows-x86_64'

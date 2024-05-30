@@ -1,0 +1,132 @@
+permissions:
+  contents: write
+  packages: write
+on:
+  workflow_run:
+    workflows:
+      - mekadbms - build - docker
+    branches: [main]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      commit:
+        type: string
+        description: The commit that produced the release this workflow should run on
+      release:
+        type: string
+        description: The Github release that was created
+
+# If new code is pushed to a PR branch, then cancel in progress workflows for that PR.
+# Ensures that we don't waste CI time, and returns results quicker
+# https://github.com/jonhoo/rust-ci-conf/pull/5
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: false
+
+name: mekadbms - build - docker
+jobs:
+  merge_tags:
+    name: Merge and push multi-arch tag
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || inputs.commit}}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
+          #defaults to '' if inputs.commit is not set (when triggered automatically)
+          ref: ${{ inputs.commit }}
+      #Configure git to auth with the cross repo PAT
+      - run: git config --global url."https://${{ secrets.CROSS_REPO_TOKEN }}@github.com".insteadOf ssh://git@github.com
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}
+          tags: type=raw,value={{branch}}-{{sha}}
+
+      - name: Determine release
+        run: |
+          set -e
+          set -o xtrace
+          version="${{ inputs.release }}"
+          if [ ! -z "$version" -a "$version" != " " ]; then
+            echo "Release is present in inputs as $version"
+          else
+            version="${{ steps.meta.outputs.version }}"
+            echo "Release is NOT present in inputs so used meta generated version of $version"
+          fi
+          echo "version=$(echo ${version})" >> $GITHUB_ENV
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create and push multi-arch manifest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        #  is wrong when triggered manually
+        #Removed from after the `download` argument for now so it always runs on the latest release
+        run: |
+          docker manifest create \
+          hypi/mekadbms:${{ env.version }} \
+          --amend hypi/mekadbms:${{ env.version }}-linux-amd64 \
+          --amend hypi/mekadbms:${{ env.version }}-linux-aarch64 \
+          --amend hypi/mekadbms:${{ env.version }}-mac-amd64 \
+          --amend hypi/mekadbms:${{ env.version }}-mac-aarch64 \
+          --amend hypi/mekadbms:${{ env.version }}-windows-amd64 && \
+          docker manifest push hypi/mekadbms:${{ env.version }} && \
+          docker tag hypi/mekadbms:${{ env.version }} hypi/mekadbms:latest && \
+          docker push hypi/mekadbms:latest 
+
+      - name: Push git tag
+        run: |
+          git config --global user.email "github-action@hypi.io"
+          git config --global user.name "Hypi Github Action"
+          git tag ${{ env.version }}
+          git pull origin $(git rev-parse --abbrev-ref HEAD)
+          git push origin $(git rev-parse --abbrev-ref HEAD)
+          git push origin --tags
+
+      - name: Publish Github release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          read -r -d '' notes <<EOF
+            # Hypi MekaDB Management Server - MekaDBMS v${{ env.version }}
+            Full Changelog: https://github.com/hypi-universe/mekadbms/commits/${{ env.version }}
+            # Downloads
+            We provide binaries to download and run MakeDB or Docker images
+            ## Docker
+              For Docker, you need a single command.
+            ### On Linux and Mac
+              `docker run --privileged -it -p 2023 -p 2024 hypi/mekadbms:${{ env.version}}`
+
+            On Linux and Mac, because MekaDB starts and manages other containers for you dynamically, this is needed to provide it access to Docker running on your machine.
+            If you do not want to provide `--privileged` then you can set the environment variable `MEKADB_OPENSEARCH_HOST` to a URL where Opensearch is running and MekaDB will use it instead of starting one itself. 
+            Note that without this, you will still be able to use pipes to sync data into and push data out of MekaDB but you need to use the MekaDB client libraries and write code to do it.
+          
+            `sudo` is not needed unless your Docker requires it to run commands. MekaDB will get permission denied and you need to re-run the Docker command with `sudo`.
+
+            ### On windows
+              `docker run -it -p 2023 -p 2024 hypi/mekadbms:${{ env.version}}`
+            Windows does not support `--privileged` and it is not needed.
+
+            ## Binaries
+            You can download MekaDB and run it on your computer or server directly:
+            * Windows AMD/Intel/x86 - [mekadbms-amd64.exe](https://github.com/hypi-universe/mekadbms/releases/download/${{ env.version }}/mekadbms-amd64.exe)
+            * Linux ARM/AARCH64 - [mekadbms-linux-arm64](https://github.com/hypi-universe/mekadbms/releases/download/${{ env.version }}/mekadbms-linux-arm64)
+            * Linux AMD/Intel/x86 - [mekadbms-linux-amd64](https://github.com/hypi-universe/mekadbms/releases/download/${{ env.version }}/mekadbms-linux-amd64)
+            * Mac ARM/AARCH64 - [mekadbms-darwin-arm64](https://github.com/hypi-universe/mekadbms/releases/download/${{ env.version }}/mekadbms-darwin-arm64)
+            * Mac AMD/Intel/x86 - [mekadbms-darwin-amd64](https://github.com/hypi-universe/mekadbms/releases/download/${{ env.version }}/mekadbms-darwin-amd64)
+          EOF          
+          gh release edit ${{ env.version }} \
+          --latest \
+          --notes "$notes" \
+          --tag ${{ env.version }} 
+          
