@@ -165,6 +165,7 @@ jobs:
         run: |
           set -e
           set -o xtrace
+          brew install tree
           rustup target list
           rustup target add ${{ matrix.platform.target }}
           rustup show && \
@@ -177,6 +178,7 @@ jobs:
         run: |
           set -e
           set -o xtrace
+          brew install tree
           rustup target list
           rustup target add ${{ matrix.platform.target }}
           rustup show && \
@@ -220,7 +222,6 @@ jobs:
         run: |
           set -e
           set -o xtrace
-          brew install tree
           tree -hfDR target | grep 'mekadbms'
 
       - name: Release binary and SHA-256 checksum to GitHub
