@@ -9,6 +9,45 @@ Cross compiling is non-trivial however you need to:
 
 This is doable with Github actions but takes fiddling.
 
+# How it works
+
+1. When a commit lands on `main` the `deploy-mekadbms-setup-release.yml` pipeline runs
+   1. It creates a Github release in draft mode with minimal information
+   2. This gives us something to add the binaries to later
+2. Next, `deploy-mekadbms-bin.yml` listens for it to complete successfully
+   1. It uses a OS matrix to run the `cargo build` in parallel on each respective OS
+   2. It was found to be better for us to build the binary on the host with the native CPU we're targeting
+      1. Windows AMD64 does a windows build for intel based windows machines
+      2. Linux AMD64 (Ubuntu) does a binary for intel
+      3. Linux ARM64 (Ubuntu) does a binary for ARM
+      4. Mac AMD64 (13) does a binary for intel based Macs
+      5. Mac AMR64 (14) does a binary for ARM based Macs (M* series M1, M2 etc)
+   3. After building the binaries, the Github CLI is used to upload each one into the draft release previously created
+      1. Windows seems to take the longest to build consistently
+      2. The rust cache action doesn't work if the rust projects isn't at the root so we need to setup Github caches manually
+         1. I've read https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows but haven't actioned yet
+3. Next, `deploy-mekadbms-docker.yml` listens for the binaries to complete successfully
+   1. It uses another OS matrix to build a Docker image of all 5 binaries
+   2. It uses the Github CLI to download the respective binaries from the draft release which each Dockerfile uses.
+      1. There's a `Dockerfile` which is shared between `Linux` and `Mac`. The main difference is for each architecture we include something like `--platform=linux/amd64`
+      2. Then for windows there's `Dockerfile.win` since for windows they're Powershell commands which can't easily live with the *nix based ones.
+   3. Noticeably, we don't build the Docker image on the Mac because I couldn't get Docker desktop to start on the runner
+   4. So 1 runner uses windows and 4 runners use linux, 2 are ARM and 2 are AMD for Mac and Linux bins
+   5. QEMU is setup for the Docker builds to do it on Linux
+   6. 5 Docker images are produced, one by each runner, the produce an image like
+      1. `hypi/mekadbms:main-27476f4-windows-amd64`
+         1. `main-27476f4` would be the release tag
+         2. `windows` would be the OS so can be `linux` or `mac`
+         3. `amd64` can also be `arm64`
+4. Once these 5 images are produced, `deploy-mekadbms-docker-manifest.yml` listens for it to complete
+   1. A Docker multi-arch build is a [JSON array](https://www.docker.com/blog/multi-arch-build-and-images-the-simple-way/) of references to a set of images
+   2. We use the `docker manifest create` command to build this JSON array from the list of 5 images produced in the previous step
+   3. The new manifest is then pushed to create a single tag, technically done twice
+      1. `hypi/mekadbms:main-27476f4` so docker run from any OS will work without using an OS/CPU specific tag
+      2. `hypi/mekadbms:latest` is also done for each build so users can just do `docker run hypi/mekadbms` and it will always use the latest release
+   4. It pushes a git tag with the same name as the version
+   5. Finally, it uses the Github CLI to complete the draft release and marks it as the latest
+
 # General
 * Use `rustup target list` to see the list of targets Rust supports
 * You can install a toolchain using `rustup toolchain install <version>-<target>` e.g. `rustup toolchain install stable-aarch64-apple-darwin`
