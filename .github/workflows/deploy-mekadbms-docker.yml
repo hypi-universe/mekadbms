@@ -13,6 +13,9 @@ on:
       commit:
         type: string
         description: The commit that produced the release this workflow should run on
+      release:
+        type: string
+        description: The Github release that was created
 env:
   REGISTRY_IMAGE: hypi/mekadbms
 
@@ -89,12 +92,30 @@ jobs:
           images: ${{ env.REGISTRY_IMAGE }}
           tags: type=raw,value={{branch}}-{{sha}}
 
+      - name: Determine release
+        run: |
+          set -e
+          set -o xtrace
+          version="${{ inputs.release }}"
+          if [ ! -z "$version" -a "$version" != " " ]; then
+            echo "Release is present in inputs as $version"
+          else
+            version="${{ steps.meta.outputs.version }}"
+            echo "Release is NOT present in inputs so used meta generated version of $version"
+          fi
+    
+          echo "version=$(echo ${version})" >> $GITHUB_ENV
+
       - name: Download binary from GitHub
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        #  is wrong when triggered manually
+        #Removed from after the `download` argument for now so it always runs on the latest release
         run: |
+          set -e
+          set -o xtrace
           mkdir -p mekadb/target/${{ matrix.platform.target }}/release
-          gh release download ${{ steps.meta.outputs.version }} \
+          gh release download ${{ env.version }} \
           --dir mekadb/target/${{ matrix.platform.target }}/release \
           --pattern "${{ matrix.platform.bin }}" \
           --clobber
