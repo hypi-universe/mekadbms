@@ -61,18 +61,21 @@ jobs:
 #            bin: mekadbms-amd64.exe
 #            docker_target: windows/amd64
 #            command: both
-#          - os_name: macOS-x86_64
-#            os: macOS-latest
-#            target: x86_64-apple-darwin
-#            docker_target: linux/amd64
-#            bin: mekadbms-darwin-amd64
-#            command: both
-#          - os_name: macOS-aarch64
-#            os: macOS-latest
-#            target: aarch64-apple-darwin
-#            docker_target: linux/arm64
-#            bin: mekadbms-darwin-arm64
-#            command: both
+        #https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
+          - os_name: macOS-x86_64
+            #13 is intel/x86
+            os: macos-13
+            target: x86_64-apple-darwin
+            docker_target: linux/amd64
+            bin: mekadbms-darwin-amd64
+            command: both
+          - os_name: macOS-aarch64
+            #macos-14 is arm64/M1
+            os: macOS-14
+            target: aarch64-apple-darwin
+            docker_target: linux/arm64
+            bin: mekadbms-darwin-arm64
+            command: both
         toolchain:
           - stable
     steps:
@@ -159,45 +162,28 @@ jobs:
           cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
 
       - name: build mac ARM
+#        rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }} && \
         if: matrix.platform.os_name == 'macOS-aarch64'
         working-directory: mekadb
-        #necessary or we get "jammy-updates/restricted amd64 Packages " errors from update
-        #sudo rm -f /etc/apt/sources.list.d/archive_uri-*
-        #see https://github.com/actions/runner-images/issues/5656
-        #we symlink /usrarm-linux-* .so.<N> files to /lib because rustc looks for them there and ignores LD_LIBRARY_PATH env - clue from https://stackoverflow.com/a/52832543/400048
-        #clues from about ubuntu deps https://groups.google.com/g/linux.debian.bugs.dist/c/6P4cw8mMwO4
-        #same from https://askubuntu.com/a/250721/10273
-        #and https://askubuntu.com/a/676704/10273
-        #didn't work but was useful https://unix.stackexchange.com/a/751333/4489
-        #linker options from https://blog.rust-lang.org/2016/05/13/rustup.html
-        #rm -rf ~/.cargo/registry/index because after installing arm old deps appear corrupt? https://stackoverflow.com/a/69499185/400048
-        #rm -rf ~/.cargo/registry - only seems to be via rustup https://stackoverflow.com/a/41093785/400048
-        #cargo vendor is necessary because when cargo is run after arm dependencies are installed, it fails to resolve the git dependency we have
         run: |
           set -e
           set -o xtrace
-          cargo update --verbose && \
-          cargo vendor >> .cargo/config.toml && \
-          cat .cargo/config.toml && \
-          sudo rm -f /etc/apt/sources.list.d/archive* && \
-          sudo dpkg --add-architecture arm64 && \
-          sudo apt-get -y update || true && \
-          sudo apt-get -y install \
-                      gcc-arm-linux-gnueabihf \
-                      g++-arm-linux-gnueabihf \
-                      libc6-armhf-cross \
-                      libssl-dev  && \
-          ls -ahl /usr/arm-linux-gnueabihf/lib && \
-          export CC=arm-linux-gnueabihf-gcc && \
-          export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=/usr/bin/arm-linux-gnueabihf-gcc && \
-          export RUSTFLAGS="-L=/usr/arm-linux-gnueabihf/lib -C target-feature=+crt-static" && \
-          rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }} && \
+          rustup target list
+          rustup target add ${{ matrix.platform.target }}
           rustup show && \
-          for filename in "/usr/arm-linux-gnueabihf/lib/"*.so.*; do sudo ln -s "$filename" "/lib/$(basename $filename)"; done && \
-          rm -rf ~/.cargo/registry/index && \
-          rm -rf ~/.cargo/registry && \
-          rm -rf ~/.cargo/git && \
-          cargo build --verbose --release --package mekadbms --target ${{ matrix.platform.target }}
+          cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
+
+      - name: build mac x86
+#        rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }} && \
+        if: matrix.platform.os_name == 'macOS-x86_64'
+        working-directory: mekadb
+        run: |
+          set -e
+          set -o xtrace
+          rustup target list
+          rustup target add ${{ matrix.platform.target }}
+          rustup show && \
+          cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
 
         #https://github.com/aws/aws-lc/issues/1477
         #https://github.com/rustls/rustls/issues/1913
@@ -245,9 +231,3 @@ jobs:
             "mekadb/target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}#${{ matrix.platform.bin }}"
             "mekadb/target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}.sha256#${{ matrix.platform.bin }}.sha256"
             --clobber
-#        with:
-#          tag_name: ${{ steps.params.outputs.mekadbTag }}
-#          token: ${{ secrets.GITHUB_TOKEN }}
-#          files: |
-#            target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}
-#            target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}.sha256
