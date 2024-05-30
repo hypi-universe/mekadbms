@@ -127,7 +127,7 @@ jobs:
         #docker:26.1.3-dind is available for amd64,arm64,arm/v6,arm/v7
         #See for linker export https://github.com/rust-lang/rust/issues/28924#issuecomment-580828030
       - name: build linux X86
-        if: contains(matrix.platform.docker_target, 'linux/amd64')
+        if: matrix.platform.os_name == 'Linux-x86_64'
         working-directory: mekadb
         #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
         #rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
