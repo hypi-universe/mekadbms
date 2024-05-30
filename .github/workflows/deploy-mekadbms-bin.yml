@@ -40,41 +40,41 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          - os_name: Linux-aarch64
-            os: ubuntu-latest
-            #hf = hard float i.e. where the CPU includes floating point support
-            target: aarch64-unknown-linux-gnu
-            docker_target: linux/arm64
-            bin: mekadbms-linux-arm64
-            command: build
-          - os_name: Linux-x86_64
-            os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-#            target: x86_64-unknown-linux-musl
-            docker_target: linux/amd64
-            bin: mekadbms-linux-amd64
-            command: build
-#          - os_name: Windows-x86_64
-#            os: windows-latest
-#            target: x86_64-pc-windows-msvc
-#            bin: mekadbms-amd64.exe
-#            docker_target: windows/amd64
-#            command: both
+#          - os_name: Linux-aarch64
+#            os: ubuntu-latest
+#            #hf = hard float i.e. where the CPU includes floating point support
+#            target: aarch64-unknown-linux-gnu
+#            docker_target: linux/arm64
+#            bin: mekadbms-linux-arm64
+#            command: build
+#          - os_name: Linux-x86_64
+#            os: ubuntu-latest
+#            target: x86_64-unknown-linux-gnu
+##            target: x86_64-unknown-linux-musl
+#            docker_target: linux/amd64
+#            bin: mekadbms-linux-amd64
+#            command: build
+          - os_name: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: mekadbms-amd64.exe
+            docker_target: windows/amd64
+            command: both
         #https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
-          - os_name: macOS-x86_64
-            #13 is intel/x86
-            os: macos-13
-            target: x86_64-apple-darwin
-            docker_target: linux/amd64
-            bin: mekadbms-darwin-amd64
-            command: both
-          - os_name: macOS-aarch64
-            #macos-14 is arm64/M1
-            os: macOS-14
-            target: aarch64-apple-darwin
-            docker_target: linux/arm64
-            bin: mekadbms-darwin-arm64
-            command: both
+#          - os_name: macOS-x86_64
+#            #13 is intel/x86
+#            os: macos-13
+#            target: x86_64-apple-darwin
+#            docker_target: linux/amd64
+#            bin: mekadbms-darwin-amd64
+#            command: both
+#          - os_name: macOS-aarch64
+#            #macos-14 is arm64/M1
+#            os: macOS-14
+#            target: aarch64-apple-darwin
+#            docker_target: linux/arm64
+#            bin: mekadbms-darwin-arm64
+#            command: both
         toolchain:
           - stable
     steps:
@@ -219,12 +219,14 @@ jobs:
 
       - name: Show bins
         working-directory: mekadb
+        if: matrix.platform.os_name != 'Windows-x86_64'
         run: |
           set -e
           set -o xtrace
           tree -hfDR target | grep 'mekadbms'
 
       - name: Release binary and SHA-256 checksum to GitHub
+        #Use path from repo root, if working-directory is used, it'll try to upload to the private repo since it is git a submodule
         #working-directory: mekadb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
