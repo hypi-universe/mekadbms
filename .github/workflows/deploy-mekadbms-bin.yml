@@ -42,19 +42,18 @@ jobs:
         platform:
           - os_name: Linux-aarch64
             os: ubuntu-latest
-#            target: aarch64-unknown-linux-musl
             #hf = hard float i.e. where the CPU includes floating point support
-            target: arm-unknown-linux-gnueabihf
+            target: aarch64-unknown-linux-gnu
             docker_target: linux/arm64
             bin: mekadbms-linux-arm64
             command: build
-#          - os_name: Linux-x86_64
-#            os: ubuntu-latest
-#            target: x86_64-unknown-linux-gnu
-##            target: x86_64-unknown-linux-musl
-#            docker_target: linux/amd64
-#            bin: mekadbms-linux-amd64
-#            command: build
+          - os_name: Linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+#            target: x86_64-unknown-linux-musl
+            docker_target: linux/amd64
+            bin: mekadbms-linux-amd64
+            command: build
 #          - os_name: Windows-x86_64
 #            os: windows-latest
 #            target: x86_64-pc-windows-msvc
@@ -62,20 +61,20 @@ jobs:
 #            docker_target: windows/amd64
 #            command: both
         #https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
-#          - os_name: macOS-x86_64
-#            #13 is intel/x86
-#            os: macos-13
-#            target: x86_64-apple-darwin
-#            docker_target: linux/amd64
-#            bin: mekadbms-darwin-amd64
-#            command: both
-#          - os_name: macOS-aarch64
-#            #macos-14 is arm64/M1
-#            os: macOS-14
-#            target: aarch64-apple-darwin
-#            docker_target: linux/arm64
-#            bin: mekadbms-darwin-arm64
-#            command: both
+          - os_name: macOS-x86_64
+            #13 is intel/x86
+            os: macos-13
+            target: x86_64-apple-darwin
+            docker_target: linux/amd64
+            bin: mekadbms-darwin-amd64
+            command: both
+          - os_name: macOS-aarch64
+            #macos-14 is arm64/M1
+            os: macOS-14
+            target: aarch64-apple-darwin
+            docker_target: linux/arm64
+            bin: mekadbms-darwin-arm64
+            command: both
         toolchain:
           - stable
     steps:
@@ -132,6 +131,8 @@ jobs:
         #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
         #rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
         run: |
+          set -e
+          set -o xtrace
           rustup show
           export RUSTFLAGS="-C target-feature=+crt-static"
           cargo build --release --package mekadbms --target ${{ matrix.platform.target }}
@@ -142,12 +143,14 @@ jobs:
         #rustup toolchain install ${{ matrix.toolchain }}-${{ matrix.platform.target }}
         #x86_64-unknown-linux-gnu is default on Ubuntu so no need to install it
         run: |
+          set -e
+          set -o xtrace
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu
-          which gcc-arm-linux-gnueabihf || true
-          tree -fhDR /usr | grep 'arm'
+          which aarch64-unknown-linux-gnu || true
+          tree -fhDR /usr | grep "arm|aarch"
           # ls -ahl /usr/bin/arm-linux-gnueabihf-gcc
-          export CC=arm-linux-gnueabihf-gcc
-          export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=/usr/bin/arm-linux-gnueabihf-gcc
+          export CC=aarch64-linux-gnu-gcc
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=/usr/bin/aarch64-linux-gnu-gcc
           rustup target list
           rustup target add ${{ matrix.platform.target }}
           rustup show
@@ -213,7 +216,11 @@ jobs:
 
       - name: Show bins
         working-directory: mekadb
-        run: tree -hDR target | grep 'mekadbms'
+        run: |
+          set -e
+          set -o xtrace
+          brew install tree
+          tree -hfDR target | grep 'mekadbms'
 
       - name: Release binary and SHA-256 checksum to GitHub
         #working-directory: mekadb
